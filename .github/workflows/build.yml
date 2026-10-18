@@ -11,24 +11,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Unzip the mod
-        run: |
-          mkdir -p _src
-          unzip -q -o ./*.zip -d _src
-          GRADLEW=$(find _src -name gradlew -not -path "*/__MACOSX/*" | head -n 1)
-          test -n "$GRADLEW" || { echo "gradlew not found inside the zip"; exit 1; }
-          echo "PROJECT_DIR=$(dirname "$GRADLEW")" >> "$GITHUB_ENV"
-
       - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
 
-      - name: Build
-        working-directory: ${{ env.PROJECT_DIR }}
+      - name: Unzip and build
         run: |
+          mkdir -p _src jar-out
+          unzip -q -o ./*.zip -d _src
+          GRADLEW=$(find _src -name gradlew | head -n 1)
+          test -n "$GRADLEW" || { echo "gradlew not found inside the zip"; exit 1; }
+          cd "$(dirname "$GRADLEW")"
           chmod +x ./gradlew
           ./gradlew build --no-daemon
+          cd "$GITHUB_WORKSPACE"
+          cp "$(dirname "$GRADLEW")"/build/libs/elementalarsenal-*.jar jar-out/
+          rm -f jar-out/*-sources.jar
+          ls -l jar-out
 
-      - name: Upload
+      - name: Upload the mod jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: elementalarsenal-jar
+          path: jar-out/*.jar
